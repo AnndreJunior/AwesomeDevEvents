@@ -7,4 +7,5 @@ public class DevEventSpeaker
     public string TalkTitle { get; set; }
     public string TaskDescription { get; set; }
     public string LinkedInProfile { get; set; }
+    public Guid DevEventId { get; set; }
 }

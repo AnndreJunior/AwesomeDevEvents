@@ -1,6 +1,7 @@
 using AwesomeDevEvents.Api.Entities;
 using AwesomeDevEvents.Api.Persistence;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace AwesomeDevEvents.Api.Controllers;
 
@@ -26,7 +27,9 @@ public class DevEventsController : ControllerBase
     [HttpGet("{id}")]
     public IActionResult GetById(Guid id)
     {
-        var devEvent = _context.DevEvents.SingleOrDefault(devEvent => devEvent.Id == id);
+        var devEvent = _context.DevEvents
+            .Include(de => de.Speakers)
+            .SingleOrDefault(devEvent => devEvent.Id == id);
         if (devEvent == null)
             return NotFound();
 
@@ -37,6 +40,7 @@ public class DevEventsController : ControllerBase
     public IActionResult Post(DevEvent request)
     {
         _context.DevEvents.Add(request);
+        _context.SaveChanges();
 
         return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
     }
@@ -49,6 +53,9 @@ public class DevEventsController : ControllerBase
             return NotFound();
         devEvent.Update(request.Title, request.Description, request.StartDate, request.EndDate);
 
+        _context.DevEvents.Update(devEvent);
+        _context.SaveChanges();
+
         return NoContent();
     }
 
@@ -60,16 +67,20 @@ public class DevEventsController : ControllerBase
             return NotFound();
         devEvent.Delete();
 
+        _context.SaveChanges();
+
         return NoContent();
     }
 
     [HttpPost("{id}/speakers")]
     public IActionResult PostSpeaker(Guid id, DevEventSpeaker request)
     {
-        var devEvent = _context.DevEvents.SingleOrDefault(devEvent => devEvent.Id == id);
-        if (devEvent == null)
+        request.DevEventId = id;
+        var devEvent = _context.DevEvents.Any(devEvent => devEvent.Id == id);
+        if (devEvent == false)
             return NotFound();
-        devEvent.Speakers.Add(request);
+        _context.DevEventsSpeakers.Add(request);
+        _context.SaveChanges();
 
         return NoContent();
     }
