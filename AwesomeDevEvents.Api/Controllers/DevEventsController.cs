@@ -1,4 +1,6 @@
+using AutoMapper;
 using AwesomeDevEvents.Api.Entities;
+using AwesomeDevEvents.Api.Models;
 using AwesomeDevEvents.Api.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +12,12 @@ namespace AwesomeDevEvents.Api.Controllers;
 public class DevEventsController : ControllerBase
 {
     private readonly DevEventsDbContext _context;
+    private readonly IMapper _mapper;
 
-    public DevEventsController(DevEventsDbContext context)
+    public DevEventsController(DevEventsDbContext context, IMapper mapper)
     {
         _context = context;
+        _mapper = mapper;
     }
     /* describing controller in swagger */
     /// <summary>
@@ -28,7 +32,9 @@ public class DevEventsController : ControllerBase
     {
         var devEvents = _context.DevEvents.Where(devEvent => !devEvent.IsDeleted);
 
-        return Ok(devEvents);
+        var viewModel = _mapper.Map<List<DevEventViewModel>>(devEvents);
+
+        return Ok(viewModel);
     }
 
     /// <summary>
@@ -48,8 +54,9 @@ public class DevEventsController : ControllerBase
             .SingleOrDefault(devEvent => devEvent.Id == id);
         if (devEvent == null)
             return NotFound();
+        var viewModel = _mapper.Map<DevEventViewModel>(devEvent);
 
-        return Ok(devEvent);
+        return Ok(viewModel);
     }
 
     /// <summary>
@@ -60,12 +67,13 @@ public class DevEventsController : ControllerBase
     /// <response code="201">Success</response>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
-    public IActionResult Post(DevEvent request)
+    public IActionResult Post(DevEventInputModel request)
     {
-        _context.DevEvents.Add(request);
+        var devEventInput = _mapper.Map<DevEvent>(request);
+        _context.DevEvents.Add(devEventInput);
         _context.SaveChanges();
 
-        return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
+        return CreatedAtAction(nameof(GetById), new { id = devEventInput.Id }, request);
     }
 
     /// <summary>
@@ -79,7 +87,7 @@ public class DevEventsController : ControllerBase
     [HttpPut("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult Update(Guid id, DevEvent request)
+    public IActionResult Update(Guid id, DevEventInputModel request)
     {
         var devEvent = _context.DevEvents.SingleOrDefault(devEvent => devEvent.Id == id);
         if (devEvent == null)
@@ -125,13 +133,15 @@ public class DevEventsController : ControllerBase
     [HttpPost("{id}/speakers")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult PostSpeaker(Guid id, DevEventSpeaker request)
+    public IActionResult PostSpeaker(Guid id, DevEventSpeakerInputModel request)
     {
-        request.DevEventId = id;
+        var devEventSpeakerInput = _mapper.Map<DevEventSpeaker>(request);
+
+        devEventSpeakerInput.DevEventId = id;
         var devEvent = _context.DevEvents.Any(devEvent => devEvent.Id == id);
         if (devEvent == false)
             return NotFound();
-        _context.DevEventsSpeakers.Add(request);
+        _context.DevEventsSpeakers.Add(devEventSpeakerInput);
         _context.SaveChanges();
 
         return NoContent();
